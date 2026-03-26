@@ -406,6 +406,8 @@ private:
 
     std::optional<TOutdatedLeaderDestruction> OutdatedLeaderDestruction;
 
+    THashMap<TString, TInstant> BrokenDevices;
+
     struct TPartCountersData
     {
         NActors::TActorId Sender;
@@ -1023,6 +1025,14 @@ private:
 
     void HandleAddOutdatedLaggingDevicesResponse(
         const TEvDiskRegistry::TEvAddOutdatedLaggingDevicesResponse::TPtr& ev,
+        const NActors::TActorContext& ctx);
+
+    void HandleBrokenDeviceNotification(
+        const TEvNonreplPartitionPrivate::TEvBrokenDeviceNotification::TPtr& ev,
+        const NActors::TActorContext& ctx);
+
+    void HandleDeviceRecoveredNotification(
+        const TEvNonreplPartitionPrivate::TEvDeviceRecoveredNotification::TPtr& ev,
         const NActors::TActorContext& ctx);
 
     void ScheduleAllocateDiskIfNeeded(const NActors::TActorContext& ctx);

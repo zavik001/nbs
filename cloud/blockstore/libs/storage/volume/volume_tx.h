@@ -48,6 +48,8 @@ namespace NCloud::NBlockStore::NStorage {
     xxx(RemoveFollower,                 __VA_ARGS__)                           \
     xxx(UpdateLeader,                   __VA_ARGS__)                           \
     xxx(RemoveLeader,                   __VA_ARGS__)                           \
+    xxx(AddBrokenDevice,                __VA_ARGS__)                           \
+    xxx(RemoveBrokenDevice,             __VA_ARGS__)                           \
 // BLOCKSTORE_VOLUME_TRANSACTIONS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,6 +95,7 @@ struct TTxVolume
         TMaybe<NProto::TStorageServiceConfig> StorageConfig;
         TFollowerDisks FollowerDisks;
         TLeaderDisks LeaderDisks;
+        TVector<TVolumeDatabase::TBrokenDeviceInfo> BrokenDevices;
 
         explicit TLoadState(TInstant oldestLogEntry)
             : OldestLogEntry(oldestLogEntry)
@@ -116,6 +119,7 @@ struct TTxVolume
             StorageConfig.Clear();
             FollowerDisks.clear();
             LeaderDisks.clear();
+            BrokenDevices.clear();
         }
     };
 
@@ -863,6 +867,44 @@ struct TTxVolume
         TRemoveLeader(TRequestInfoPtr requestInfo, TLeaderFollowerLink link)
             : RequestInfo(std::move(requestInfo))
             , Link(std::move(link))
+        {}
+
+        void Clear()
+        {
+            // nothing to do
+        }
+    };
+
+    //
+    // AddBrokenDevice
+    //
+
+    struct TAddBrokenDevice
+    {
+        const TString DeviceUUID;
+        const TInstant BrokenTs;
+
+        TAddBrokenDevice(TString deviceUUID, TInstant brokenTs)
+            : DeviceUUID(std::move(deviceUUID))
+            , BrokenTs(brokenTs)
+        {}
+
+        void Clear()
+        {
+            // nothing to do
+        }
+    };
+
+    //
+    // RemoveBrokenDevice
+    //
+
+    struct TRemoveBrokenDevice
+    {
+        const TString DeviceUUID;
+
+        explicit TRemoveBrokenDevice(TString deviceUUID)
+            : DeviceUUID(std::move(deviceUUID))
         {}
 
         void Clear()

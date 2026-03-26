@@ -51,6 +51,7 @@ bool TVolumeActor::PrepareLoadState(
         db.ReadStorageConfig(args.StorageConfig),
         db.ReadFollowers(args.FollowerDisks),
         db.ReadLeaders(args.LeaderDisks),
+        db.ReadBrokenDevices(args.BrokenDevices),
     };
 
     if (args.Meta) {
@@ -181,6 +182,10 @@ void TVolumeActor::CompleteLoadState(
 
     if (args.UsedBlocks) {
         State->AccessUsedBlocks() = std::move(*args.UsedBlocks);
+    }
+
+    for (const auto& device : args.BrokenDevices) {
+        BrokenDevices[device.DeviceUUID] = device.BrokenTs;
     }
 
     StateLoadFinished = true;

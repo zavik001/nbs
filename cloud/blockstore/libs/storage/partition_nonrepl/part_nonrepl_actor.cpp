@@ -40,8 +40,13 @@ TNonreplicatedPartitionActor::TNonreplicatedPartitionActor(
           DiagnosticsConfig->GetHistogramCounterOptions()))
 {
     const auto& devices = PartConfig->GetDevices();
+    const auto& brokenDevices = PartConfig->GetBrokenDevices();
     for (ui32 i = 0; i < DeviceStats.size(); ++i) {
-        DeviceStats[i].Init(devices[i].GetDeviceUUID(), this);
+        const auto& uuid = devices[i].GetDeviceUUID();
+        DeviceStats[i].Init(uuid, this);
+        if (auto it = brokenDevices.find(uuid); it != brokenDevices.end()) {
+            DeviceStats[i].MarkBroken(it->second);
+        }
     }
 }
 

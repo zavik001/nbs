@@ -1193,6 +1193,14 @@ STFUNC(TVolumeActor::StateWork)
             TEvStatsService::TEvGetServiceStatisticsRequest,
             HandleGetServiceStatistics);
 
+        HFunc(
+            TEvNonreplPartitionPrivate::TEvBrokenDeviceNotification,
+            HandleBrokenDeviceNotification);
+
+        HFunc(
+            TEvNonreplPartitionPrivate::TEvDeviceRecoveredNotification,
+            HandleDeviceRecoveredNotification);
+
         IgnoreFunc(TEvLocal::TEvTabletMetrics);
 
         default:
@@ -1225,6 +1233,9 @@ STFUNC(TVolumeActor::StateZombie)
         IgnoreFunc(TEvVolumePrivate::TEvAcquireDiskIfNeeded);
         IgnoreFunc(TEvVolumePrivate::TEvUpdateLaggingAgentMigrationState);
         IgnoreFunc(TEvVolumePrivate::TEvLaggingAgentMigrationFinished);
+
+        IgnoreFunc(TEvNonreplPartitionPrivate::TEvBrokenDeviceNotification);
+        IgnoreFunc(TEvNonreplPartitionPrivate::TEvDeviceRecoveredNotification);
 
         IgnoreFunc(TEvVolume::TEvDiskRegistryBasedPartitionCounters);
         IgnoreFunc(TEvStatsService::TEvVolumePartCounters);

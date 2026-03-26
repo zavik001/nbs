@@ -46,6 +46,7 @@ TNonreplicatedPartitionConfig::TNonreplicatedPartitionConfig(
           params.MaxTimedOutDeviceStateDurationOverridden)
     , UseSimpleMigrationBandwidthLimiter(
           params.UseSimpleMigrationBandwidthLimiter)
+    , BrokenDevices(std::move(params.BrokenDevices))
     , BlockIndices(MakeBlockIndices(Devices))
     , CanReadFromAllDevices(AllOf(
           Devices,

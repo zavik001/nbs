@@ -258,6 +258,7 @@ void TVolumeActor::SetupDiskRegistryBasedPartitions(const TActorContext& ctx)
             maxTimedOutDeviceStateDurationOverridden,
             useSimpleMigrationBandwidthLimiter,
         };
+    params.BrokenDevices = BrokenDevices;
     auto nonreplicatedConfig =
         std::make_shared<TNonreplicatedPartitionConfig>(std::move(params));
 
