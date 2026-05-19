@@ -8,6 +8,7 @@
 #include <cloud/blockstore/libs/storage/api/service.h>
 #include <cloud/blockstore/libs/storage/core/probes.h>
 #include <cloud/blockstore/libs/storage/core/request_info.h>
+#include <cloud/blockstore/libs/storage/model/log_title.h>
 
 #include <cloud/storage/core/protos/error.pb.h>
 
@@ -46,6 +47,8 @@ private:
     TVector<TCallContextPtr> ForkedCallContexts;
     ui32 Responses = 0;
     TResponseProto ReplicasCollectiveResponse;
+
+    TLogTitle LogTitle;
 
 public:
     TMirrorRequestActor(
@@ -95,6 +98,7 @@ TMirrorRequestActor<TMethod>::TMirrorRequestActor(
     , DiskId(std::move(diskId))
     , ParentActorId(parentActorId)
     , NonreplicatedRequestCounter(nonreplicatedRequestCounter)
+    , LogTitle(GetCycleCount(), TLogTitle::TMirrorRequest{.DiskId = DiskId})
 {
     Y_DEBUG_ABORT_UNLESS(!Replicas.empty());
 }
@@ -193,9 +197,11 @@ void TMirrorRequestActor<TMethod>::HandleUndelivery(
 {
     Y_UNUSED(ev);
 
-    LOG_WARN(ctx, TBlockStoreComponents::PARTITION_WORKER,
-        "[%s] %s request undelivered to some nonrepl partitions",
-        DiskId.c_str(),
+    LOG_WARN(
+        ctx,
+        TBlockStoreComponents::PARTITION_WORKER,
+        "%s %s request undelivered to some nonrepl partitions",
+        LogTitle.GetWithTime().c_str(),
         TMethod::Name);
 
     *ReplicasCollectiveResponse.MutableError() = MakeError(
@@ -218,9 +224,11 @@ void TMirrorRequestActor<TMethod>::HandleResponse(
     auto* msg = ev->Get();
 
     if (HasError(msg->Record)) {
-        LOG_ERROR(ctx, TBlockStoreComponents::PARTITION_WORKER,
-            "[%s] %s got error from nonreplicated partition: %s",
-            DiskId.c_str(),
+        LOG_ERROR(
+            ctx,
+            TBlockStoreComponents::PARTITION_WORKER,
+            "%s %s got error from nonreplicated partition: %s",
+            LogTitle.GetWithTime().c_str(),
             TMethod::Name,
             FormatError(msg->Record.GetError()).c_str());
     }

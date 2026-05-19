@@ -103,6 +103,11 @@ public:
         TString DiskId;
     };
 
+    struct TMirrorRequest
+    {
+        TString DiskId;
+    };
+
 private:
     using TData = std::variant<
         TVolume,
@@ -116,7 +121,8 @@ private:
         TPartitionMigration,
         TFreshBlocksWriter,
         TAgentAvailabilityMonitoringActor,
-        TMigrationRequest>;
+        TMigrationRequest,
+        TMirrorRequest>;
 
     ui64 StartTime = 0;
     TData Data;
