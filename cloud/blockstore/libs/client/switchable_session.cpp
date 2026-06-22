@@ -213,6 +213,17 @@ public:
             newDiskId,
             newSessionId);
 
+        // Extract old-session resources before the slot is reused.  The drain
+        // callback must own these directly; accessing Sessions[activeSession]
+        // after SetValue() wakes the caller is a data race (the caller may
+        // overwrite the slot before the callback finishes).
+        TString drainDiskId = oldSession.DiskId;
+        auto drainCounter = std::move(oldSession.InflightRequestCounter);
+        auto drainSession = std::move(oldSession.Session);
+        auto drainClient = std::move(oldSession.SwitchableClient);
+        auto drainPromise = std::move(oldSession.DrainPromise);
+        auto drainFuture = drainPromise.GetFuture();
+
         const size_t nextSession = (activeSession + 1) % Sessions.size();
         Sessions[nextSession] = {
             .DiskId = newDiskId,
@@ -220,8 +231,14 @@ public:
             .SwitchableClient = std::move(newSwitchableClient)};
 
         ActiveSession.store(nextSession, std::memory_order_release);
-        ScheduleCheckAllRequestsDrained(activeSession);
-        return oldSession.DrainPromise;
+        ScheduleCheckAllRequestsDrained(
+            std::move(drainDiskId),
+            std::move(drainCounter),
+            std::move(drainSession),
+            std::move(drainClient),
+            std::move(drainPromise));
+
+        return drainFuture;
     }
 
     // Implements ISession
@@ -328,30 +345,54 @@ private:
             .Session.get();
     }
 
-    void ScheduleCheckAllRequestsDrained(size_t sessionIndex)
+    void ScheduleCheckAllRequestsDrained(
+        TString diskId,
+        TSharedCounterPtr counter,
+        ISessionPtr session,
+        ISwitchableBlockStorePtr switchableClient,
+        TPromise<void> drainPromise)
     {
         Scheduler->Schedule(
             TInstant::Now() + CheckDrainCompletedPeriod,
-            [sessionIndex, weakSelf = weak_from_this()]
+            [diskId = std::move(diskId),
+             counter = std::move(counter),
+             session = std::move(session),
+             switchableClient = std::move(switchableClient),
+             drainPromise = std::move(drainPromise),
+             weakSelf = weak_from_this()]() mutable
             {
                 if (auto self = weakSelf.lock()) {
-                    self->CheckAllRequestsDrained(sessionIndex);
+                    self->CheckAllRequestsDrained(
+                        std::move(diskId),
+                        std::move(counter),
+                        std::move(session),
+                        std::move(switchableClient),
+                        std::move(drainPromise));
                 }
             });
     }
 
-    void CheckAllRequestsDrained(size_t sessionIndex)
+    void CheckAllRequestsDrained(
+        TString diskId,
+        TSharedCounterPtr counter,
+        ISessionPtr session,
+        ISwitchableBlockStorePtr switchableClient,
+        TPromise<void> drainPromise)
     {
-        auto& session = Sessions[sessionIndex];
-        size_t count = session.InflightRequestCounter->Count;
         STORAGE_INFO(
-            "Inflight request for " << session.DiskId.Quote() << ": " << count);
-        if (count == 0) {
-            session.DrainPromise.SetValue();
-            session.Session.reset();
-            session.SwitchableClient.reset();
+            "Inflight request for " << diskId.Quote() << ": "
+                                    << counter->Count.load());
+        if (counter->Count == 0) {
+            drainPromise.SetValue();
+            // session and switchableClient are released as locals go out of
+            // scope
         } else {
-            ScheduleCheckAllRequestsDrained(sessionIndex);
+            ScheduleCheckAllRequestsDrained(
+                std::move(diskId),
+                std::move(counter),
+                std::move(session),
+                std::move(switchableClient),
+                std::move(drainPromise));
         }
     }
 };
